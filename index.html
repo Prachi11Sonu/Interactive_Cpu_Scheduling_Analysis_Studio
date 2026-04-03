@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic CPU Scheduling Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body data-theme="light">
+  <main class="app-shell">
+    <section class="workspace">
+      <header class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">CPU Scheduling Studio</p>
+          <h1>Schedula OS</h1>
+          <p class="hero-text">A simple CPU scheduling simulator for testing algorithms, comparing results, and exploring system behavior.</p>
+          <div class="hero-tags">
+            <span class="hero-tag">Arrival-aware scheduling</span>
+            <span class="hero-tag">Live playback</span>
+            <span class="hero-tag">Energy intelligence</span>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="hero-actions">
+            <button class="secondary-button" id="themeToggle" type="button" onclick="toggleTheme()">Dark Mode</button>
+            <button class="ghost-button" type="button" onclick="exportSolutionPackage()">Export Full Solution</button>
+          </div>
+          <div class="hero-visual">
+            <div class="visual-orbit">
+              <div class="orbit-core">
+                <span class="orbit-kicker">Live State</span>
+                <strong id="heroTaskCount">0 tasks</strong>
+                <p id="heroModeLabel">Standard mode</p>
+              </div>
+            </div>
+            <div class="signal-grid">
+              <article class="signal-card">
+                <span class="signal-label">Algorithm</span>
+                <strong id="activeAlgorithmLabel">FCFS</strong>
+              </article>
+              <article class="signal-card">
+                <span class="signal-label">Queue Focus</span>
+                <strong id="heroPriorityMix">Mixed</strong>
+              </article>
+              <article class="signal-card">
+                <span class="signal-label">Timeline</span>
+                <strong id="heroTimelineState">Idle</strong>
+              </article>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="top-stats">
+        <article class="stat-card">
+          <span class="stat-label">Waiting Time</span>
+          <strong class="stat-value" id="avgWaitingTime">0.00</strong>
+          <span class="stat-sub">Average queue delay</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Turnaround</span>
+          <strong class="stat-value" id="avgTurnaroundTime">0.00</strong>
+          <span class="stat-sub">Average completion span</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Energy</span>
+          <strong class="stat-value" id="totalEnergy">0</strong>
+          <span class="stat-sub">Total energy units</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Fairness</span>
+          <strong class="stat-value" id="fairnessScore">0</strong>
+          <span class="stat-sub">Score out of 100</span>
+        </article>
+      </section>
+
+      <section class="control-grid">
+        <article class="panel panel-feature">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Input Desk</p>
+              <h2>Add Or Import Tasks</h2>
+            </div>
+          </div>
+          <div class="task-form">
+            <input type="number" id="arrivalTime" placeholder="Arrival Time" required>
+            <input type="number" id="burstTime" placeholder="Burst Time" required>
+            <input type="number" id="priority" placeholder="Priority (1: System, 2: Interactive, 3: Background)" class="hidden">
+            <button class="add-button" onclick="addTask()">Add Task</button>
+            <input type="file" id="importFile" accept=".csv" style="display: none;">
+            <button class="import-button" onclick="importTasks()">Import Tasks</button>
+            <button class="export-button" onclick="exportTasks()">Export Tasks CSV</button>
+          </div>
+          <p class="mini-note">Bring in custom workloads or build them task by task.</p>
+        </article>
+
+        <article class="panel panel-feature">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Scenario Deck</p>
+              <h2>Preset Workloads</h2>
+            </div>
+          </div>
+          <label for="presetSelector">Choose a real-world story</label>
+          <select id="presetSelector">
+            <option value="">Choose a preset workload</option>
+            <option value="student">Student Multitasking</option>
+            <option value="gaming">Gaming Session</option>
+            <option value="server">API Server Rush</option>
+            <option value="mobile">Mobile Battery Saver</option>
+            <option value="hospital">Emergency Hospital Monitor</option>
+            <option value="streaming">Video Streaming Edge Node</option>
+            <option value="exam">Online Exam Portal</option>
+            <option value="factory">Smart Factory Controller</option>
+          </select>
+          <div class="button-row compact-row">
+            <button class="preset-button" onclick="loadPreset()">Load Preset</button>
+            <button class="compare-button" onclick="compareAlgorithms()">Compare All</button>
+          </div>
+          <p class="mini-note">These presets turn the simulator into a demo-ready systems lab.</p>
+        </article>
+
+        <article class="panel panel-primary">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Control Desk</p>
+              <h2>Run The Scheduler</h2>
+            </div>
+          </div>
+          <div class="stack-grid">
+            <div>
+              <label for="algorithm">Scheduling Algorithm</label>
+              <select id="algorithm">
+                <option value="FCFS">First-Come, First-Served (FCFS)</option>
+                <option value="SJF">Shortest Job First (SJF)</option>
+                <option value="PriorityNP">Priority Scheduling (Non-Preemptive)</option>
+                <option value="PriorityP">Priority Scheduling (Preemptive)</option>
+                <option value="RR">Round Robin (RR)</option>
+                <option value="SRTF">Shortest Remaining Time First (SRTF)</option>
+                <option value="MLQ">Multilevel Queue Scheduling (MLQ)</option>
+                <option value="CUSTOM">Custom Hybrid Scheduler</option>
+              </select>
+            </div>
+            <div>
+              <label for="mode">Execution Mode</label>
+              <select id="mode">
+                <option value="standard">Standard Mode (Performance)</option>
+                <option value="eco">Eco Mode (Energy Efficiency)</option>
+                <option value="balanced">Balanced Mode (Performance + Energy)</option>
+              </select>
+            </div>
+            <div>
+              <label for="timeQuantum">Time Quantum</label>
+              <input type="number" id="timeQuantum" placeholder="Time Quantum (for RR, MLQ)" class="hidden">
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="simulate-button" onclick="simulate()">Start Simulation</button>
+            <button class="clear-button" onclick="clearData()">Clear Workspace</button>
+          </div>
+          <div class="meter-shell">
+            <div class="meter-labels">
+              <span>Energy Efficiency</span>
+              <strong id="energyEfficiency">0%</strong>
+            </div>
+            <div class="energy-meter">
+              <div class="energy-level" id="energyLevel" style="width: 0%"></div>
+            </div>
+          </div>
+          <p class="mini-note">Run a single strategy or compare all algorithms against the same workload.</p>
+        </article>
+      </section>
+
+      <section class="lab-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Hybrid Builder</p>
+              <h2>Custom Algorithm</h2>
+            </div>
+          </div>
+          <label for="customSystemPolicy">System Queue Policy</label>
+          <select id="customSystemPolicy">
+            <option value="FCFS">FCFS</option>
+            <option value="SJF">SJF</option>
+            <option value="RR">Round Robin</option>
+          </select>
+          <label for="customInteractivePolicy">Interactive Queue Policy</label>
+          <select id="customInteractivePolicy">
+            <option value="RR">Round Robin</option>
+            <option value="SJF">SJF</option>
+            <option value="FCFS">FCFS</option>
+          </select>
+          <label for="customBackgroundPolicy">Background Queue Policy</label>
+          <select id="customBackgroundPolicy">
+            <option value="FCFS">FCFS</option>
+            <option value="SJF">SJF</option>
+            <option value="RR">Round Robin</option>
+          </select>
+          <label for="agingBoost">Aging Boost Interval</label>
+          <input type="number" id="agingBoost" value="5" min="1" placeholder="Boost every N waiting units">
+          <label for="customQuantum">Custom Quantum</label>
+          <input type="number" id="customQuantum" value="2" min="1" placeholder="Quantum for RR queues">
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Live Generator</p>
+              <h2>Real-Time Workload</h2>
+            </div>
+          </div>
+          <label for="generatorScenario">Scenario</label>
+          <select id="generatorScenario">
+            <option value="balanced">Balanced Desktop</option>
+            <option value="bursty">Bursty Server</option>
+            <option value="battery">Battery Saver</option>
+          </select>
+          <label for="generatorCount">Tasks To Stream In</label>
+          <input type="number" id="generatorCount" value="5" min="1" max="20">
+          <label for="generatorSpacing">Arrival Spacing</label>
+          <input type="number" id="generatorSpacing" value="1" min="1" max="10">
+          <div class="button-row compact-row">
+            <button class="secondary-button" onclick="generateRealtimeWorkload()">Generate Workload</button>
+            <button class="ghost-button" onclick="saveSession()">Save Session</button>
+          </div>
+          <div class="saved-sessions" id="savedSessionsInfo">No saved sessions yet.</div>
+        </article>
+      </section>
+
+      <section class="innovation-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Innovation Lab</p>
+              <h2>Head-To-Head Compare</h2>
+            </div>
+          </div>
+          <div class="duel-grid">
+            <div>
+              <label for="duelAlgorithmA">Algorithm A</label>
+              <select id="duelAlgorithmA">
+                <option value="FCFS">FCFS</option>
+                <option value="SJF">SJF</option>
+                <option value="PriorityNP">Priority NP</option>
+                <option value="PriorityP">Priority P</option>
+                <option value="RR">Round Robin</option>
+                <option value="SRTF">SRTF</option>
+                <option value="MLQ">MLQ</option>
+                <option value="CUSTOM">Custom Hybrid</option>
+              </select>
+            </div>
+            <div>
+              <label for="duelAlgorithmB">Algorithm B</label>
+              <select id="duelAlgorithmB">
+                <option value="SJF">SJF</option>
+                <option value="FCFS">FCFS</option>
+                <option value="PriorityNP">Priority NP</option>
+                <option value="PriorityP">Priority P</option>
+                <option value="RR">Round Robin</option>
+                <option value="SRTF">SRTF</option>
+                <option value="MLQ">MLQ</option>
+                <option value="CUSTOM">Custom Hybrid</option>
+              </select>
+            </div>
+          </div>
+          <div class="button-row compact-row">
+            <button class="secondary-button" onclick="runHeadToHead()">Run Head-To-Head</button>
+          </div>
+          <div id="headToHeadResult" class="mini-note">Pick two algorithms to compare their waiting time, fairness, and energy side by side.</div>
+          <div id="dualTimelineView" class="mini-note">Dual timeline view will appear here after you run the head-to-head comparison.</div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Insight Engine</p>
+              <h2>Workload Fingerprint</h2>
+            </div>
+          </div>
+          <div id="workloadFingerprint" class="insight-stack">
+            <p class="mini-note">Add or generate tasks to build a workload fingerprint.</p>
+          </div>
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Coach</p>
+              <h2>Scheduling Guide</h2>
+            </div>
+          </div>
+          <div id="coachPreview" class="insight-stack">
+            <p class="mini-note">Run a simulation to get an explanation of why the scheduler behaved the way it did.</p>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">AI Assist</p>
+              <h2>Algorithm Recommendation AI</h2>
+            </div>
+          </div>
+          <label for="naturalLanguageWorkload">Describe your workload in plain English</label>
+          <textarea id="naturalLanguageWorkload" rows="5" placeholder="Example: I have many short interactive tasks, a few urgent system jobs, and I want fast response time more than energy savings."></textarea>
+          <div class="button-row compact-row">
+            <button class="secondary-button" onclick="analyzeWorkloadIntent()">Suggest Scheduler</button>
+          </div>
+          <div id="nlRecommendation" class="insight-stack">
+            <p class="mini-note">Describe the type of tasks, priorities, and whether you care more about responsiveness, fairness, or energy.</p>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Story Mode</p>
+              <h2>Scenario Storytelling</h2>
+            </div>
+          </div>
+          <label for="storyScenario">Scenario</label>
+          <select id="storyScenario">
+            <option value="hospital">Hospital</option>
+            <option value="gaming">Gaming</option>
+            <option value="server">Server</option>
+            <option value="factory">Factory</option>
+          </select>
+          <div class="button-row compact-row">
+            <button class="secondary-button" onclick="playScenarioStory()">Play Scenario</button>
+          </div>
+          <div id="storyScene" class="story-scene">
+            <p class="mini-note">Choose a scenario to see its system context, workload story, and recommended scheduling priorities.</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Analysis</p>
+            <h2>Solution And Recommendations</h2>
+          </div>
+          <p class="mini-note">This area updates with the chosen schedule, what-if guidance, and your best-fit algorithm.</p>
+        </div>
+        <div class="output" id="output"></div>
+        <div class="chart" id="chart"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Report</p>
+            <h2>Project Scorecard</h2>
+          </div>
+        </div>
+        <div id="reportScorecard" class="insight-stack">
+          <p class="mini-note">Run a simulation or comparison to generate presentation-ready conclusions and observations.</p>
+        </div>
+      </section>
+    </section>
+
+    <aside class="insights-column" id="description">
+      <section class="panel sticky-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Reference</p>
+            <h2>Algorithm Description</h2>
+          </div>
+        </div>
+        <p id="algorithmDescription">Select an algorithm to see its description.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Workload</p>
+            <h2>Task Table</h2>
+          </div>
+          <span class="pill-badge" id="contextSwitches">0 switches</span>
+        </div>
+        <table class="task-table" id="taskTable">
+          <thead>
+            <tr>
+              <th>Task ID</th>
+              <th>Arrival Time</th>
+              <th>Burst Time</th>
+              <th>Priority</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="taskTableBody"></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Timeline</p>
+            <h2>Gantt Playback</h2>
+          </div>
+        </div>
+        <div class="gantt-chart" id="ganttChart"></div>
+        <div class="timeline-controls">
+          <button class="secondary-button" onclick="playTimeline()">Play Timeline</button>
+          <button class="ghost-button" onclick="pauseTimeline()">Pause</button>
+          <button class="ghost-button" onclick="resetTimeline()">Reset</button>
+          <label for="timelineSpeed">Speed</label>
+          <select id="timelineSpeed">
+            <option value="900">1x</option>
+            <option value="500">2x</option>
+            <option value="250">4x</option>
+          </select>
+        </div>
+        <div class="timeline-status" id="timelineStatus">Run a simulation to watch step-by-step playback.</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">State Flow</p>
+            <h2>Process Visualizer</h2>
+          </div>
+        </div>
+        <div class="state-board" id="stateBoard">
+          <div class="state-column"><h4>New</h4></div>
+          <div class="state-column"><h4>Ready</h4></div>
+          <div class="state-column"><h4>Running</h4></div>
+          <div class="state-column"><h4>Waiting</h4></div>
+          <div class="state-column"><h4>Terminated</h4></div>
+        </div>
+      </section>
+
+      <section class="panel detector-list" id="detectorPanel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Risk Signals</p>
+            <h2>Starvation And Fairness</h2>
+          </div>
+        </div>
+        <p class="mini-note">Simulation analysis will flag starvation risk, priority inversion hints, and overall fairness here.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Charts</p>
+            <h2>Energy Analysis</h2>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="energyChart"></canvas>
+        </div>
+        <div class="energy-legend" id="energyLegend">
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: rgba(3, 52, 110, 0.9);"></div>
+            <span class="priority-label">System Priority</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: rgba(110, 172, 218, 0.95);"></div>
+            <span class="priority-label">Interactive Priority</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: rgba(226, 226, 182, 0.95);"></div>
+            <span class="priority-label">Background Priority</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Chart</p>
+            <h2>Energy Distribution</h2>
+          </div>
+        </div>
+        <div class="pie-chart-container">
+          <canvas id="priorityChart"></canvas>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Chart</p>
+            <h2>Performance vs Energy</h2>
+          </div>
+        </div>
+        <div class="pie-chart-container">
+          <canvas id="tradeoffChart"></canvas>
+        </div>
+      </section>
+
+      <section class="panel challenge-box" id="challengeBox">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Learning Mode</p>
+            <h2>Challenge</h2>
+          </div>
+        </div>
+        <p id="challengePrompt">Generate a challenge to test your scheduling intuition.</p>
+        <button class="secondary-button" onclick="generateChallenge()">New Challenge</button>
+        <button class="ghost-button" onclick="revealChallengeAnswer()">Reveal Answer</button>
+        <div id="challengeAnswer" class="mini-note"></div>
+      </section>
+
+      <section class="panel share-box" id="shareBox">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Export Desk</p>
+            <h2>Shareable Solution</h2>
+          </div>
+        </div>
+        <p class="mini-note">Export a complete solution report with task details, findings, charts, and the Gantt view.</p>
+        <div class="button-row">
+          <button class="secondary-button" onclick="exportSolutionPackage()">Export Full Solution</button>
+          <button class="ghost-button" onclick="exportSessionReport()">Export JSON</button>
+          <button class="ghost-button" onclick="copyShareSummary()">Copy Summary</button>
+          <button class="ghost-button" onclick="loadSavedSession()">Load Saved Session</button>
+        </div>
+        <div id="shareSummary" class="mini-note">No report generated yet.</div>
+      </section>
+
+      <section class="panel tips">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Story Library</p>
+            <h2>System Contexts</h2>
+          </div>
+        </div>
+        <span class="story-badge">Emergency Monitoring</span>
+        <span class="story-badge">Streaming Edge Node</span>
+        <span class="story-badge">Exam Portal Load Spike</span>
+        <span class="story-badge">Battery Saver Phone</span>
+        <span class="story-badge">Factory Sensor Pipeline</span>
+      </section>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
